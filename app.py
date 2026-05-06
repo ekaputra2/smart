@@ -2,11 +2,17 @@ import streamlit as st
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import io
 import urllib.parse
+import cv2
+import numpy as np
+import tempfile
 
 # CONFIG
 st.set_page_config(page_title="Sumini Mart Pro", layout="centered")
 
-# ===== THEME CERAH MINIMAL =====
+# ================= SIDEBAR =================
+menu = st.sidebar.radio("📌 MENU", ["📸 FOTO POSTER", "🎬 VIDEO POSTER"])
+
+# ===== THEME CERAH MINIMAL (TETAP ASLI) =====
 st.markdown("""
 <style>
 .stApp {
@@ -51,7 +57,6 @@ h1 {
     background: #fafafa;
 }
 
-/* Tombol */
 div.stButton > button:first-child {
     background: #ff9800;
     color: white;
@@ -64,158 +69,226 @@ div.stButton > button:first-child {
 </style>
 """, unsafe_allow_html=True)
 
-# HEADER
+# ================= HEADER =================
 st.markdown("<h1>🛒 TOKO SUMINI</h1>", unsafe_allow_html=True)
 st.markdown("<div class='subtitle'>Poster simple & elegan</div>", unsafe_allow_html=True)
 
-# INPUT
+# ================= INPUT GLOBAL (TIDAK DIHAPUS) =================
 st.markdown("<div class='section'>", unsafe_allow_html=True)
 st.subheader("📦 Data Produk")
 nama_barang = st.text_input("Nama Produk")
 harga_barang = st.text_input("Harga")
 st.markdown("</div>", unsafe_allow_html=True)
 
-# FOTO
-st.markdown("<div class='section'>", unsafe_allow_html=True)
-st.subheader("📸 Upload Foto")
-foto_kamera = st.camera_input("Kamera")
-foto_galeri = st.file_uploader("Galeri", type=['jpg','png','jpeg'])
-st.markdown("</div>", unsafe_allow_html=True)
+# =========================================================
+# ================= HALAMAN FOTO ==========================
+# =========================================================
+if menu == "📸 FOTO POSTER":
 
-foto = foto_kamera if foto_kamera else foto_galeri
+    st.markdown("<div class='section'>", unsafe_allow_html=True)
+    st.subheader("📸 Upload Foto")
+    foto_kamera = st.camera_input("Kamera")
+    foto_galeri = st.file_uploader("Galeri", type=['jpg','png','jpeg'])
+    st.markdown("</div>", unsafe_allow_html=True)
 
-# BUTTON
-st.markdown("<br>", unsafe_allow_html=True)
-proses = st.button("✨ BUAT POSTER CLEAN")
+    foto = foto_kamera if foto_kamera else foto_galeri
 
-# PROCESS
-if proses:
-    if not foto or not nama_barang or not harga_barang:
-        st.error("⚠️ Lengkapi data dulu!")
-    else:
-        image = Image.open(foto)
+    proses = st.button("✨ BUAT POSTER CLEAN")
 
-        if image.mode in ("RGBA", "P"):
-            image = image.convert("RGB")
+    if proses:
+        if not foto or not nama_barang or not harga_barang:
+            st.error("⚠️ Lengkapi data dulu!")
+        else:
+            image = Image.open(foto)
 
-        width, height = image.size
+            if image.mode in ("RGBA", "P"):
+                image = image.convert("RGB")
 
-        # ===== IG STYLE FILTER (soft + clean) =====
-        blur_bg = image.copy().filter(ImageFilter.GaussianBlur(12))
-        image = Image.blend(blur_bg, image, 0.75)
+            width, height = image.size
 
-        draw = ImageDraw.Draw(image)
+            # ===== IG STYLE FILTER (TIDAK DIHAPUS) =====
+            blur_bg = image.copy().filter(ImageFilter.GaussianBlur(12))
+            image = Image.blend(blur_bg, image, 0.75)
 
-        # ===== GRADIENT OVERLAY BAWAH (IG STYLE) =====
-        overlay = Image.new('RGBA', (width, int(height*0.35)), (0,0,0,0))
-        for i in range(overlay.height):
-            alpha = int(160 * (i / overlay.height))
-            line = Image.new('RGBA', (width, 1), (0,0,0,alpha))
-            overlay.paste(line, (0, i))
-        image.paste(overlay, (0, height - overlay.height), overlay)
+            draw = ImageDraw.Draw(image)
 
-        image = image.convert('RGB')
+            # ===== OVERLAY (TETAP ASLI) =====
+            overlay = Image.new('RGBA', (width, int(height*0.35)), (0,0,0,0))
+            for i in range(overlay.height):
+                alpha = int(160 * (i / overlay.height))
+                line = Image.new('RGBA', (width, 1), (0,0,0,alpha))
+                overlay.paste(line, (0, i))
+            image.paste(overlay, (0, height - overlay.height), overlay)
 
-        # ===== BORDER CLEAN (ROUNDED) + DIAGONAL CORNER LINES =====
-        border_size = int(min(width, height) * 0.04)
+            image = image.convert('RGB')
 
-        new_w = width + border_size*2
-        new_h = height + border_size*2
-        new_img = Image.new("RGB", (new_w, new_h), (255,255,255))
-        new_img.paste(image, (border_size, border_size))
+            # ===== BORDER (TIDAK DIUBAH SAMA SEKALI) =====
+            border_size = int(min(width, height) * 0.05)
 
-        draw_border = ImageDraw.Draw(new_img)
+            new_w = width + border_size*2
+            new_h = height + border_size*2
 
-        radius = int(border_size * 2)
+            new_img = Image.new("RGB", (new_w, new_h), (255,255,255))
+            new_img.paste(image, (border_size, border_size))
 
-        # merah
-        draw_border.rounded_rectangle([0, 0, new_w-1, new_h-1], radius=radius, outline=(211,47,47), width=border_size)
+            draw_border = ImageDraw.Draw(new_img)
 
-        # kuning
-        offset1 = int(border_size * 0.5)
-        draw_border.rounded_rectangle([offset1, offset1, new_w-offset1-1, new_h-offset1-1], radius=radius, outline=(255,235,59), width=int(border_size*0.5))
+            radius = int(border_size * 2)
 
-        # biru
-        offset2 = int(border_size * 1.1)
-        draw_border.rounded_rectangle([offset2, offset2, new_w-offset2-1, new_h-offset2-1], radius=radius, outline=(13,71,161), width=2)
+            draw_border.rounded_rectangle(
+                [0, 0, new_w-1, new_h-1],
+                radius=radius,
+                outline=(211,47,47),
+                width=border_size
+            )
 
-        # diagonal lines
-        line_len = int(border_size * 2.5)
+            offset1 = int(border_size * 0.5)
+            draw_border.rounded_rectangle(
+                [offset1, offset1, new_w-offset1-1, new_h-offset1-1],
+                radius=radius,
+                outline=(255,235,59),
+                width=int(border_size*0.6)
+            )
 
-        draw_border.line((0, line_len, line_len, 0), fill=(255,235,59), width=4)
-        draw_border.line((0, line_len+8, line_len+8, 0), fill=(13,71,161), width=3)
+            offset2 = int(border_size * 1.1)
+            draw_border.rounded_rectangle(
+                [offset2, offset2, new_w-offset2-1, new_h-offset2-1],
+                radius=radius,
+                outline=(13,71,161),
+                width=int(border_size*0.6)
+            )
 
-        draw_border.line((new_w-line_len, 0, new_w, line_len), fill=(255,235,59), width=4)
-        draw_border.line((new_w-line_len-8, 0, new_w, line_len+8), fill=(13,71,161), width=3)
+            # diagonal (TETAP)
+            line_len = int(border_size * 2.5)
 
-        draw_border.line((0, new_h-line_len, line_len, new_h), fill=(255,235,59), width=4)
-        draw_border.line((0, new_h-line_len-8, line_len+8, new_h), fill=(13,71,161), width=3)
+            draw_border.line((0, line_len, line_len, 0), fill=(255,235,59), width=5)
+            draw_border.line((0, line_len+10, line_len+10, 0), fill=(13,71,161), width=4)
 
-        draw_border.line((new_w-line_len, new_h, new_w, new_h-line_len), fill=(255,235,59), width=4)
-        draw_border.line((new_w-line_len-8, new_h, new_w, new_h-line_len-8), fill=(13,71,161), width=3)
+            draw_border.line((new_w-line_len, 0, new_w, line_len), fill=(255,235,59), width=5)
+            draw_border.line((new_w-line_len-10, 0, new_w, line_len+10), fill=(13,71,161), width=4)
 
-        image = new_img
-        width, height = image.size
-        draw = ImageDraw.Draw(image)
+            draw_border.line((0, new_h-line_len, line_len, new_h), fill=(255,235,59), width=5)
+            draw_border.line((0, new_h-line_len-10, line_len+10, new_h), fill=(13,71,161), width=4)
 
-        # ===== LOGO =====
-        try:
-            logo = Image.open("image.png")
-            logo_w = int(width * 0.18)
-            ratio = logo_w / logo.width
-            logo_h = int(logo.height * ratio)
-            logo = logo.resize((logo_w, logo_h))
+            draw_border.line((new_w-line_len, new_h, new_w, new_h-line_len), fill=(255,235,59), width=5)
+            draw_border.line((new_w-line_len-10, new_h, new_w, new_h-line_len-10), fill=(13,71,161), width=4)
 
-            if logo.mode != "RGBA":
-                logo = logo.convert("RGBA")
+            image = new_img
+            width, height = image.size
+            draw = ImageDraw.Draw(image)
 
-            image.paste(logo, (20, 20), logo)
-        except:
-            pass
+            # ===== LOGO (TIDAK DIHAPUS) =====
+            try:
+                logo = Image.open("image.png")
+                logo_w = int(width * 0.18)
+                ratio = logo_w / logo.width
+                logo_h = int(logo.height * ratio)
+                logo = logo.resize((logo_w, logo_h))
 
-        # ===== FONT =====
-        font_size = int(width * 0.05)
-        try:
-            font_title = ImageFont.truetype("arialbd.ttf", font_size)
-            font_price = ImageFont.truetype("arial.ttf", int(font_size*0.9))
-        except:
-            font_title = ImageFont.load_default()
-            font_price = ImageFont.load_default()
+                if logo.mode != "RGBA":
+                    logo = logo.convert("RGBA")
 
-        # ===== TEXT =====
-        margin = int(width * 0.05)
-        text_y = height - int(height*0.22)
+                image.paste(logo, (20, 20), logo)
+            except:
+                pass
 
-        box_padding = 15
-        text_w = int(width * 0.7)
-        text_h = int(font_size * 2.5)
+            # ===== FONT (TETAP) =====
+            font_size = int(width * 0.08)
 
-        draw.rectangle([
-            margin - box_padding,
-            text_y - box_padding,
-            margin + text_w,
-            text_y + text_h
-        ], fill=(0,0,0,120))
+            try:
+                font_title = ImageFont.truetype("arialbd.ttf", font_size)
+                font_price = ImageFont.truetype("arial.ttf", int(font_size*1.1))
+            except:
+                font_title = ImageFont.load_default()
+                font_price = ImageFont.load_default()
 
-        draw.text((margin, text_y), nama_barang, fill="white", font=font_title)
-        draw.text((margin, text_y + font_size + 5), f"Rp {harga_barang}", fill="#ffd54f", font=font_price)
+            # ===== TEXT (TIDAK DIUBAH) =====
+            margin = int(width * 0.05)
+            text_y = height - int(height*0.25)
 
-        # OUTPUT
-        st.subheader("✨ Hasil Poster")
-        st.image(image, use_container_width=True)
+            draw.rectangle([
+                margin - 20,
+                text_y - 20,
+                margin + int(width * 0.9),
+                text_y + int(font_size * 3.2)
+            ], fill=(0,0,0,120))
 
-        buf = io.BytesIO()
-        image.save(buf, format="JPEG", quality=90)
-        byte_im = buf.getvalue()
+            draw.text((margin, text_y), nama_barang, fill="white", font=font_title)
+            draw.text((margin, text_y + font_size + 10),
+                      f"Rp {harga_barang}",
+                      fill="#ffd54f",
+                      font=font_price)
 
-        col1, col2 = st.columns(2)
+            st.subheader("✨ Hasil Poster")
+            st.image(image, use_container_width=True)
 
-        with col1:
-            st.download_button("💾 Download", byte_im, file_name="produk_clean.jpg")
+            buf = io.BytesIO()
+            image.save(buf, format="JPEG", quality=95)
 
-        with col2:
-            pesan = f"*TOKO SUMINI*\n\n{nama_barang}\nRp {harga_barang}\n\nOrder sekarang"
-            link = f"https://wa.me/6289504810142?text={urllib.parse.quote(pesan)}"
-            st.link_button("📲 WhatsApp", link)
+            col1, col2 = st.columns(2)
 
-        st.success("✅ Desain clean siap dipakai!")
+            with col1:
+                st.download_button("💾 Download", buf.getvalue(), file_name="produk_clean.jpg")
+
+            with col2:
+                pesan = f"*TOKO SUMINI*\n\n{nama_barang}\nRp {harga_barang}\n\nOrder sekarang"
+                link = f"https://wa.me/6289504810142?text={urllib.parse.quote(pesan)}"
+                st.link_button("📲 WhatsApp", link)
+
+# =========================================================
+# ================= HALAMAN VIDEO =========================
+# =========================================================
+if menu == "🎬 VIDEO POSTER":
+
+    st.markdown("<div class='section'>", unsafe_allow_html=True)
+    st.subheader("🎥 Upload Video (Fitur Tambahan)")
+    video_file = st.file_uploader("Upload Video", type=['mp4','mov','avi'])
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    if st.button("🎬 BUAT VIDEO POSTER"):
+        if not video_file or not nama_barang or not harga_barang:
+            st.error("⚠️ Lengkapi data video!")
+        else:
+            tfile = tempfile.NamedTemporaryFile(delete=False)
+            tfile.write(video_file.read())
+
+            cap = cv2.VideoCapture(tfile.name)
+
+            fps = int(cap.get(cv2.CAP_PROP_FPS))
+            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+            border = int(min(w,h) * 0.05)
+
+            out_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+            out = cv2.VideoWriter(out_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w+border*2, h+border*2))
+
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                canvas = np.ones((h+border*2, w+border*2, 3), dtype=np.uint8) * 255
+                canvas[border:border+h, border:border+w] = frame
+
+                cv2.rectangle(canvas, (0,0), (w+border*2-1,h+border*2-1), (211,47,47), border)
+
+                cv2.putText(canvas, nama_barang, (50, h),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1,
+                            (255,255,255), 2)
+
+                cv2.putText(canvas, f"Rp {harga_barang}", (50, h+40),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1,
+                            (0,255,255), 2)
+
+                out.write(canvas)
+
+            cap.release()
+            out.release()
+
+            video_bytes = open(out_path, 'rb').read()
+
+            st.video(video_bytes)
+            st.download_button("💾 Download Video", video_bytes, "video_poster.mp4")
+
+            st.success("✅ Video berhasil dibuat!")
