@@ -70,18 +70,24 @@ nama_barang = st.text_input("Nama Produk", value="Raja Lele")
 harga_barang = st.text_input("Harga", value="5000")
 st.markdown("</div>", unsafe_allow_html=True)
 
-# ================= FONT FIX STREAMLIT CLOUD =================
+# ================= FONT FIX (ANTI CRASH STREAMLIT CLOUD) =================
 def get_font(size, bold=False):
     font_paths = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
     ]
 
     for path in font_paths:
-        if os.path.exists(path):
-            return ImageFont.truetype(path, size)
+        try:
+            if os.path.exists(path):
+                return ImageFont.truetype(path, size)
+        except:
+            pass
 
-    return ImageFont.truetype("arial.ttf", size * 2)
+    # SAFE FALLBACK (TIDAK CRASH)
+    return ImageFont.load_default()
 
 # =====================================================
 # ================= FOTO POSTER =======================
@@ -103,7 +109,7 @@ if menu == "📸 FOTO POSTER":
         else:
             img_input = Image.open(foto)
 
-            # CANVAS STORY
+            # ===== CANVAS STORY =====
             target_w = 1080
             target_h = 1920
             image = Image.new("RGB", (target_w, target_h), (13, 71, 161))
@@ -115,7 +121,7 @@ if menu == "📸 FOTO POSTER":
             width, height = image.size
             draw = ImageDraw.Draw(image)
 
-            # BORDER
+            # ===== BORDER =====
             border_size = int(min(width, height) * 0.05)
             radius = int(border_size * 2)
 
@@ -133,7 +139,7 @@ if menu == "📸 FOTO POSTER":
                 width=int(border_size*0.6)
             )
 
-            # LOGO
+            # ===== LOGO =====
             try:
                 logo = Image.open("image.png")
                 logo_w = int(width * 0.22)
@@ -150,7 +156,7 @@ if menu == "📸 FOTO POSTER":
             font_title = get_font(font_size, bold=True)
             font_price = get_font(int(font_size * 1.2), bold=True)
 
-            # ================= CONTAINER TEXT FIX =================
+            # ================= TEXT CONTAINER =================
             price_text = f"Rp {harga_barang}"
 
             name_bbox = draw.textbbox((0,0), nama_barang, font=font_title)
@@ -167,6 +173,7 @@ if menu == "📸 FOTO POSTER":
             box_x = (width - box_w)//2
             box_y = height - box_h - int(height*0.08)
 
+            # container gelap transparan
             container = Image.new("RGBA", (box_w, box_h), (0,0,0,170))
             image.paste(container, (box_x, box_y), container)
 
@@ -196,7 +203,7 @@ if menu == "📸 FOTO POSTER":
                 st.link_button("📲 WhatsApp", link)
 
 # =====================================================
-# ================= VIDEO (TETAP) ======================
+# ================= VIDEO POSTER ======================
 # =====================================================
 if menu == "🎬 VIDEO POSTER":
 
@@ -219,7 +226,7 @@ if menu == "🎬 VIDEO POSTER":
             w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-            border = int(min(w,h)*0.05)
+            border = int(min(w,h) * 0.05)
 
             out_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
             out = cv2.VideoWriter(out_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w+border*2, h+border*2))
